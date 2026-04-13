@@ -1,110 +1,112 @@
-## LiteCoder
-
+# LiteCoder
 LiteCoder stems from our efforts to develop capable small and medium-sized code agent models. Our goal is to push the boundaries of what lightweight models can achieve.
 
-In this initial release, we present **LiteCoder-Terminal-preview**, a series of models specialized in terminal interactions. 
+Today, we are releasing LiteCoder-Terminal-SFT, featuring improved performance compared to the [previous preview release](https://www.notion.so/2b997d2e1a8b807c95e2d983c92f441f?pvs=21) across multiple Terminal benchmarks. Alongside the model, we release our full training dataset of 11,255 trajectories, generated using multiple harnesses and featuring broader domain coverage. Building upon this data, we also open-source 602 standard Harbor terminal environments, equipped with complete test cases to facilitate further RL training.
 
-**Notably, our [LiteCoder-4b-Terminal-preview](https://huggingface.co/Lite-Coder/LiteCoder-4b-Terminal-preview) model achieves competitive results using fewer than 1,000 training samples.** By relying entirely on a fully synthetic pipeline—without converting any existing datasets—we were able to secure significant gains on the challenging **Terminal Bench**, matching the performance of leading open-source models with extreme data efficiency.
+## **Released Artifacts**
 
-## Released Artifacts
-
-| 2025/12/17 |  |  |
+| 2026/04/13 | Type | Link |
 | --- | --- | --- |
-| LiteCoder-4b-Terminal-preview | Model | https://huggingface.co/Lite-Coder/LiteCoder-4b-Terminal-preview |
-| LiteCoder-SFT-Terminal-preview | Dataset | https://huggingface.co/datasets/Lite-Coder/LiteCoder-SFT-Terminal-preview |
+| LiteCoder-Terminal-30b-a3b-sft | Model | [**https://huggingface.co/Lite-Coder/LiteCoder-Terminal-30b-a3b-sft**](https://huggingface.co/Lite-Coder/LiteCoder-Terminal-30b-a3b-sft) |
+| LiteCoder-Terminal-4b-sft | Model | [**https://huggingface.co/Lite-Coder/LiteCoder-Terminal-4b-sft**](https://huggingface.co/Lite-Coder/LiteCoder-Terminal-4b-sft) |
+| LiteCoder-Terminal-SFT | Dataset | [**https://huggingface.co/datasets/Lite-Coder/LiteCoder-Terminal-SFT**](https://huggingface.co/datasets/Lite-Coder/LiteCoder-Terminal-SFT) |
+| LiteCoder-Terminal-World-Model-SFT | Dataset | [**https://huggingface.co/datasets/Lite-Coder/LiteCoder-Terminal-World-Model-SFT**](https://huggingface.co/datasets/Lite-Coder/LiteCoder-Terminal-World-Model-SFT) |
+| LiteCoder-Terminal-RL-preview | Dataset | [**https://huggingface.co/datasets/Lite-Coder/LiteCoder-Terminal-RL-preview**](https://huggingface.co/datasets/Lite-Coder/LiteCoder-Terminal-RL-preview/tree/main) |
+| icip-cas/LiteCoder | Code | [**https://github.com/icip-cas/LiteCoder**](https://github.com/icip-cas/LiteCoder) |
 
-## Data Construction Pipeline
+## What’s New
 
-To build a robust terminal agent model, we developed a rigorous data synthesis pipeline consisting of three stages: **Task Curation**, **Environment Preparation**, and **Trajectory Generation**.
+- **Taxonomy expansion:** Introducing new task categories to cover a broader range of terminal interactions.
+- **Data scale expansion:** Scaling from a sub-1k setup to **11,255** **total trajectories**.
+- **Environment synthesis:** Converting text-only task descriptions into executable terminal environments.
+- **Scaffold expansion:** Moving from **Terminus-only** training to a **multi-scaffold** setting.
+- **Improved results:** Higher performance on **Terminal** **Bench** **1.0** **/** **2.0 / Pro**, with **pass@4** results also reported.
 
-### Task Sampling
+## Taxonomy Expansion
 
-![image.png](figures/overall_pipeline.png)
+We expanded the task taxonomy to cover a broader range of real-world terminal interactions, introducing 3 new categories: **coding**, **scientific/numerical computing,** and **games**. This ensures the model is exposed to highly diverse scenarios, ranging from rigorous developer workflows to the dynamic, state-driven environments typically found in terminal games.
 
-In the first version of our data, we established a taxonomy covering seven core domains of terminal usage: `ai_ml`, `build_tools`, `data_science`, `networking`, `security`, `system_admin`, and `version_control`.
+## Environment Synthesis
 
-Based on the taxonomy, We adapt [MAGPIE](https://arxiv.org/abs/2406.08464)-like method to synthesize long-horizon agentic tasks. By feeding the model a domain-specific system message followed by the standard chat template prefix for a user turn (e.g., `<|user|>`), the model "autocompletes" the sequence, generating a plausible and high-quality task tailored to the specified domain.
+The lack of high-quality, executable training environments is currently a major challenge for training terminal agents. Raw task descriptions lack the execution feedback required for techniques like rejection sampling and reinforcement learning, so an executable environment is essential. We implemented a five-stage synthesis pipeline to convert sampled tasks into the Harbor format using the Claude Agent SDK:
 
-![image.png](figures/task_sampling.png)
+![image.png](figures/environment_generation_pipeline.png)
 
-### Feasibility Check
+- **Refinement:** Transforming raw task descriptions into rigorous instructions with testable constraints.
+- **Environment Setup:** Generating the Dockerfile and necessary input artifacts.
+- **Reference Solution:** Creating a gold-standard solution to validate solvability.
+- **Verifier Creation:** Synthesizing a comprehensive test suite based on the reference solution.
+- **Configuration:** Encapsulating metadata into a `task.toml` file.
 
-To ensure data integrity, we employ an LLM-as-a-Judge to validate raw tasks. This stage evaluates entries against criteria—including **complexity balance**, **clarity of specification**, and **resource availability**—filtering out unfeasible or ambiguous tasks to maintain a high-quality task set.
+## Scaffolding Extension
 
-![image.png](figures/feasibility_check.png)
+Given the vast array of agent scaffolds, a robust model must be able to adapt to diverse setups. To improve cross-scaffold generalization, we expanded our trajectory collection beyond the initial Terminus-only setup. The updated training pipeline now integrates trajectories from popular frameworks like Claude Code and OpenHands.
 
-### Environment Preparation
+## Results
 
-Many terminal tasks (e.g., fixing a bug in an existing repo or managing git conflicts) rely on specific starting states. To address this, we utilize an agent to interactively generate the necessary starting artifacts within a Docker container. Once setup is complete, we extract the final state to serve as the initial environment for the actual task execution.
+To ensure the reliability of our evaluation, the reported Pass@1 scores represent the average performance across four independent runs in Terminal Bench 1.0 and 2.0.
 
-![image.png](figures/environment_preparation.png)
+### Terminal Bench 1.0 Performance
 
-### Trajectory Generation
+| Model | Agent | pass@1 | pass@4 |
+| --- | --- | --- | --- |
+| **LiteCoder-Terminal-30b-a3b-sft** | Terminus 2 | **24.38%** | **30%** |
+| Qwen3-30B-A3B-Nex-N1 | Openhands | 18.44% | 32.5% |
+| LiteCoder-30a3b-Terminal-preview | Terminus 2 | 16.56% | 27.5% |
+| Qwen3-30B-A3B-Instruct | Terminus 2 | 16.56% | 28.75% |
+| **LiteCoder-Terminal-4b-sft** | Terminus 2 | **13.44%** | **30%** |
+| OpenThinker-Agent-v1 | Terminus 2 | 11.25% | 25% |
+| LiteCoder-4b-Terminal-preview | Terminus 2 | 9.38% | 20% |
+| Qwen3-4B-Instruct | Terminus 2 | 6.25% | 15% |
 
-We utilize the **Harbor** framework to generate trajectories based on the curated tasks using strong models as the teacher. We further filter out trajectories exhibiting looping behavior.
+### Terminal Bench 2.0 Performance
 
-### Implementation
+| Model | Agent | pass@1 | pass@4 |
+| --- | --- | --- | --- |
+| **LiteCoder-Terminal-30b-a3b-sft** | Terminus 2 | **12.36%** | **23.60%** |
+| Qwen3-30B-A3B-Nex-N1 | Openhands | 12.36% | 23.60% |
+| LiteCoder-30a3b-Terminal-preview | Terminus 2 | 6.18% | 13.75% |
+| **LiteCoder-Terminal-4b-sft** | Terminus 2 | **5.62%** | **12.36%** |
+| Qwen3-30B-A3B-Instruct | Terminus 2 | 5.34% | 11.24% |
+| OpenThinker-Agent-v1 | Terminus 2 | 4.49% | 10.1% |
+| LiteCoder-4b-Terminal-preview | Terminus 2 | 4.78% | 12.36% |
+| Qwen3-4B-Instruct | Terminus 2 | 1.12% | 3.37% |
 
-We employ `Kimi-K2-Instruct-0905` for task sampling and `MiniMax-M2` for environment preparation and trajectory generation.
+### Terminal Bench Pro Performance
 
-## Performance
-
-Our models achieve competitive results on **Terminal Bench**, significantly outperforming general-purpose models of similar (and even larger) sizes.
-
-**Terminal Bench 1.0 Performance**
-
-| **Model** | **Agent** | **Results** |
+| Model | Agent | pass@1 |
 | --- | --- | --- |
-| **LiteCoder-30a3b-Terminal-preview** | Terminus 2 | **18.75%** |
-| Qwen3-30B-A3B-Nex-N1 | Terminus 2 | 18.75% |
-| **LiteCoder-4b-Terminal-preview** | Terminus 2 | **13.75%** |
-| Qwen3-30B-A3B-Instruct | Terminus 2 | 12.5% |
-| Qwen3-4B-Instruct | Terminus 2 | 5.0% |
+| **LiteCoder-Terminal-30b-a3b-sft** | Terminus 2 | **31.5%** |
+| LiteCoder-30a3b-Terminal-preview | Terminus 2 | 22.0% |
+| Qwen3-30B-A3B-Nex-N1 | Openhands | 21.0% |
+| Qwen3-30B-A3B-Instruct | Terminus 2 | 20.5% |
+| OpenThinker-Agent-v1 | Terminus 2 | 19.5% |
+| **LiteCoder-Terminal-4b-sft** | Terminus 2 | **15.5%** |
+| LiteCoder-4b-Terminal-preview | Terminus 2 | 15.0% |
+| Qwen3-4B-Instruct | Terminus 2 | 3.5% |
 
-**Terminal Bench 2.0 Performance**
+The results indicate consistent improvements across both model scales, validating the effectiveness of our expanded dataset. The LiteCoder-30a3b-Terminal achieves 31.5% Pass@1 on Terminal Bench Pro, while the 4B model shows distinct gains over its baseline (15.5% vs. 3.5%).
 
-| **Model** | **Agent** | **Results** |
-| --- | --- | --- |
-| **LiteCoder-30a3b-Terminal-preview** | Terminus 2 | **5.6%** |
-| **LiteCoder-4b-Terminal-preview** | Terminus 2 | **3.3%** |
-| Qwen3-32B | Terminus 2 | 1.9% |
-| InternLM3-8B-Nex-N1 | Terminus 2 | 0% |
-| Qwen3-8B | Terminus 2 | 0% |
+## Statistics
 
-## Findings
+The LiteCoder-SFT dataset comprises **11,255** trajectories spanning **10** task categories, with an average of **27.4** turns per trajectory. The dataset also incorporates trajectories from three distinct agent scaffolds: **Terminus‑2** (86.6%), **OpenHands** (7.1%), and **Claude Code** (6.3%).
 
-1. **Environment Adaptability:** High-performing models show strong capability in interpreting system feedback (stdout/stderr) and dynamically adjusting their strategies, rather than simply following a rigid plan.
-2. **Context Maintenance:** Successful agents maintain coherence over long interaction turns without losing track of the original objective.
-3. **Scaffolding Sensitivity:** We identified a significant sensitivity to the agent framework. Models trained heavily within a specific scaffolding (prompt structure/tool definition) struggle to generalize when transferred to different agent frameworks. This highlights the importance of framework-agnostic training data.
+![image.png](figures/data_distribution.png)
+
+### 🐣 Terminal State Prediction
+
+Looking beyond the standard action prediction model, we are releasing an exploratory dataset for environmental state prediction to address a major agentic RL bottleneck: the prohibitive computational overhead of real-time terminal interactions.
+
+Ideally, an internal world model allows agents to simulate environment dynamics and bypass costly physical executions. However, our preliminary experiments with Qwen3-4B-Instruct reveal that internal simulations quickly deviate from actual dynamics, suffering from state prediction hallucinations.
+
+While 4B-scale models currently struggle with reliable state modeling, internalizing environment dynamics remains a critical path forward. We are open-sourcing this training data, and we hope the community can leverage it and explore whether training larger models can overcome these limitations to achieve robust, end-to-end world modeling.
 
 ## Citation
 
-```latex
-@misc{LiteCoder Team,
+```bash
+@misc{litecoder2026,
   title={LiteCoder: Advancing Small and Medium-sized Code Agents},
   author={Xiaoxuan Peng and Xinyu Lu and Kaiqi Zhang and Taosong Fang and Boxi Cao and Yaojie Lu},
-  year={2025},
+  year={2026},
 }
 ```
-
-## Future Directions
-
-- **Scaling Environments:** Expanding the diversity of Docker environments and teacher models to improve generalization.
-- **Agentic RL:** Implementing Reinforcement Learning specifically for multi-turn agentic workflows.
-
-## Team & Contributions
-
-- **Xiaoxuan Peng:** Main Contributor
-- [Xinyu Lu](https://scholar.google.com/citations?user=_OsLG8EAAAAJ&hl=zh-CN)**:** Project Lead
-- **Kaiqi Zhang:** Contributor
-- **Taosong Fang**: Contributor
-- **Boxi Cao:** Contributor
-- **Yaojie Lu:** Contributor
-
-## Acknowledgements
-
-LiteCoder builds upon multiple open-source projects, including [Harbor](https://github.com/laude-institute/harbor). The models are trained using [AutoAlign](https://github.com/icip-cas/AutoAlign).
-
-## Join Us
-
-Join the discussion on our [Discord](https://discord.gg/EX9qZe8B).
